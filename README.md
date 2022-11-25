@@ -34,6 +34,7 @@ Reinforcement learning for chrome Dino run
 
 
 <img title="Graph PPO" src="https://user-images.githubusercontent.com/26462639/203942797-61be8ca8-4dee-4196-83da-456a8074520e.PNG">
+
 - QRDQN_2 -> Bleu
 
 - RecurrentPPO -> Red
