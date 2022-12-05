@@ -17,7 +17,7 @@ from selenium.webdriver.chrome.options import Options
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.env_checker import check_env 
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, DQN
 from stable_baselines3.common.vec_env import VecFrameStack, DummyVecEnv, VecNormalize
 from stable_baselines3.common.monitor import Monitor
 
@@ -36,15 +36,6 @@ driver = Chrome()
 options = Options()
 driver.set_window_position(x=-10,y=0)
 driver.set_window_size(1920,1080)
-try:
-    driver.get(url="chrome://dino")
-except WebDriverException:
-    pass
-
-elem = driver.find_element(By.ID, 't')
-
-policy_kwargs = dict(activation_fn=th.nn.ReLU,
-                     net_arch=[128,dict(pi=[64,32,16], vf=[64,32,16,8])])
 
 class Dino(gym.Env):
   """Custom Environment that follows gym interface"""
@@ -53,22 +44,26 @@ class Dino(gym.Env):
 
   def __init__(self):
         super(Dino, self).__init__()
-        options.add_argument('--mute-audio')
-        options.add_argument("disable-infobars")
+        try:
+            driver.get(url="chrome://dino")
+        except WebDriverException:
+            pass
+        
+        self.elem = driver.find_element(By.ID, 't')
+        
         self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(low=0, high=255, shape=(200, 200, 1), dtype=np.uint8)
-        self.monitor = {'top':300,'left':0, 'width':700, "height":430}
-        
+        self.monitor = {'top':200,'left':0, 'width':1895, "height":580}
+  
   def step(self, action):
+        reward = 0.1
         done = False
         if driver.execute_script('return Runner.instance_.playing'):
-            reward = 0.1
-            elem.send_keys(action_map[action])
+            self.elem.send_keys(action_map[action])
         else:
             done = True
             reward = -1    
         new_observation = self.get_observation()
-        
         info = {}
         
         return new_observation, reward, done, info
@@ -83,7 +78,6 @@ class Dino(gym.Env):
     
   def reset(self):
         driver.execute_script("Runner.instance_.restart();")
-        elem.send_keys(Keys.SPACE)
         return self.get_observation()
              
   def close (self):
@@ -110,16 +104,18 @@ class TrainAndLoggingCallback(BaseCallback):
 
 def optimize_ppo(trial):
     return {
-        'n_steps':trial.suggest_int('n_steps', 2048, 8192),
+        'n_epochs':trial.suggest_int('n_epochs', 10, 35),
         'gamma':trial.suggest_float('gamma', 0.8, 0.9999),
         'learning_rate':trial.suggest_float('learning_rate', 1e-5, 1e-4),
         'clip_range':trial.suggest_float('clip_range', 0.1, 0.4),
         'gae_lambda':trial.suggest_float('gae_lambda', 0.8, 0.99),
+        'batch_size':trial.suggest_int('batch_size', 64, 1024),
+        'n_steps':trial.suggest_int('n_steps', 2048, 8192)
     }
 
 def optimize_agent(trial):
     model_params = optimize_ppo(trial) 
-
+    model_params['n_steps'] = int((model_params['n_steps'] / model_params['batch_size'])) * model_params['batch_size']
     # Create environment 
     env = Dino()
     env = Monitor(env, LOG_DIR)
@@ -127,8 +123,8 @@ def optimize_agent(trial):
     env = VecFrameStack(env, 4, channels_order='last')
 
         # Create algo 
-    model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=1, **model_params, device="cuda", policy_kwargs=policy_kwargs)
-    model.learn(total_timesteps=100000)
+    model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=3, **model_params, device="cuda")
+    model.learn(total_timesteps=250000)
         #model.learn(total_timesteps=100000)
 
         # Evaluate model 
@@ -147,9 +143,11 @@ if __name__ == '__main__':
     env = VecFrameStack(env, 4, channels_order='last')
     
     study = optuna.create_study(direction='maximize')
-    study.optimize(optimize_agent, n_trials=50, n_jobs=1)
-    
+    study.optimize(optimize_agent, n_trials=20, n_jobs=1)
+
     #callback = TrainAndLoggingCallback(check_freq=100000, save_path=CHECKPOINT_DIR)
-    #model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, learning_rate=8.170023176987488e-05, n_steps=6848, gamma=0.8314571621050142, clip_range=0.13580049486466264, gae_lambda=0.8908487449992829, device="cuda", verbose=1, tensorboard_log=LOG_DIR)
+    #model = PPO("CnnPolicy",env, n_epochs=32, learning_rate=1e-5, vf_coef=1., ent_coef=0.01, batch_size=1024, n_steps=4096, device="cuda", tensorboard_log=LOG_DIR, verbose=3)
+    #model.set_env(env)
+    #print("{} - {} - {} - {} - {}".format(model.n_steps, model.gamma, model.learning_rate, model.clip_range, model.gae_lambda))
     #model.learn(total_timesteps=5000000, callback=callback)
     env.close()
