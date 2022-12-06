@@ -109,6 +109,7 @@ def optimize_ppo(trial):
         'learning_rate':trial.suggest_float('learning_rate', 3e-7, 3e-5),
         'clip_range':trial.suggest_float('clip_range', 0.1, 0.5),
         'gae_lambda':trial.suggest_float('gae_lambda', 0.8, 0.99),
+        'batch_size':trial.suggest_int('batch_size', 64,1024),
         'n_steps':trial.suggest_int('n_steps', 2048, 10240)
     }
 
