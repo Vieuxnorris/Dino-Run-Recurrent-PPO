@@ -78,6 +78,7 @@ class Dino(gym.Env):
     
   def reset(self):
         driver.execute_script("Runner.instance_.restart();")
+        self.elem.send_keys(Keys.SPACE)
         return self.get_observation()
              
   def close (self):
@@ -104,13 +105,11 @@ class TrainAndLoggingCallback(BaseCallback):
 
 def optimize_ppo(trial):
     return {
-        'n_epochs':trial.suggest_int('n_epochs', 10, 35),
         'gamma':trial.suggest_float('gamma', 0.8, 0.9999),
-        'learning_rate':trial.suggest_float('learning_rate', 1e-5, 1e-4),
-        'clip_range':trial.suggest_float('clip_range', 0.1, 0.4),
+        'learning_rate':trial.suggest_float('learning_rate', 3e-7, 3e-5),
+        'clip_range':trial.suggest_float('clip_range', 0.1, 0.5),
         'gae_lambda':trial.suggest_float('gae_lambda', 0.8, 0.99),
-        'batch_size':trial.suggest_int('batch_size', 64, 1024),
-        'n_steps':trial.suggest_int('n_steps', 2048, 8192)
+        'n_steps':trial.suggest_int('n_steps', 2048, 10240)
     }
 
 def optimize_agent(trial):
@@ -121,10 +120,10 @@ def optimize_agent(trial):
     env = Monitor(env, LOG_DIR)
     env = DummyVecEnv([lambda: env])
     env = VecFrameStack(env, 4, channels_order='last')
-
+    
         # Create algo 
     model = PPO('CnnPolicy', env, tensorboard_log=LOG_DIR, verbose=3, **model_params, device="cuda")
-    model.learn(total_timesteps=250000)
+    model.learn(total_timesteps=300000)
         #model.learn(total_timesteps=100000)
 
         # Evaluate model 
@@ -146,7 +145,7 @@ if __name__ == '__main__':
     study.optimize(optimize_agent, n_trials=20, n_jobs=1)
 
     #callback = TrainAndLoggingCallback(check_freq=100000, save_path=CHECKPOINT_DIR)
-    #model = PPO("CnnPolicy",env, n_epochs=32, learning_rate=1e-5, vf_coef=1., ent_coef=0.01, batch_size=1024, n_steps=4096, device="cuda", tensorboard_log=LOG_DIR, verbose=3)
+    #model = PPO("CnnPolicy",env, learning_rate=0.000003,device="cuda", tensorboard_log=LOG_DIR, verbose=3)
     #model.set_env(env)
     #print("{} - {} - {} - {} - {}".format(model.n_steps, model.gamma, model.learning_rate, model.clip_range, model.gae_lambda))
     #model.learn(total_timesteps=5000000, callback=callback)
