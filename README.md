@@ -30,8 +30,16 @@
 Reinforcement learning for chrome Dino run
 
 <!-- ROADMAP -->
-<h2 align="center">👨‍💻 Graph 👨‍💻</h2>
+<h2 align="center">👨‍💻 Graph - Explanation 👨‍💻</h2>
+it is complicated to find the right RL algorithm for a custom environment.
 
+After many intern tests on more than 1 million samples, and with different hyperparameters for PPO it is still complicated to know where the error is and why after some time it starts to forget what it has learned, if this happens to you too, think about decreasing the learning_rate or the number of epochs (10 should be good), or increasing the clip.
+
+Since PPO is stochastic, I advise you to change the approach by using either the DQN is DDQN variants, etc.. or define in the PPO args (deterministic=True) during the prediction of actions.
+
+This is my first project in the field of RL.
+
+The graph is not a good reference, but shows with few samples that PPO converges faster than DQN.
 
 <img title="Graph PPO" src="https://user-images.githubusercontent.com/26462639/203942797-61be8ca8-4dee-4196-83da-456a8074520e.PNG">
 
