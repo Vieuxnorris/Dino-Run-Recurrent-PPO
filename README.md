@@ -31,6 +31,7 @@ Reinforcement learning for chrome Dino run
 
 <!-- ROADMAP -->
 <h2 align="center">👨‍💻 Graph - Explanation 👨‍💻</h2>
+
 it is complicated to find the right RL algorithm for a custom environment.
 
 After many intern tests on more than 1 million samples, and with different hyperparameters for PPO it is still complicated to know where the error is and why after some time it starts to forget what it has learned, if this happens to you too, think about decreasing the learning_rate or the number of epochs (10 should be good), or increasing the clip.
